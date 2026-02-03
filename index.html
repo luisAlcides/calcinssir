@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Nómina Exacta NI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .main-card { border: none; box-shadow: 0 0 20px rgba(0,0,0,0.05); border-radius: 12px; }
+        .header-bar { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 20px; border-radius: 12px 12px 0 0; }
+        .input-group-text { background-color: #e9ecef; border: 1px solid #ced4da; color: #495057; }
+        .section-label { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6c757d; margin-top: 15px; margin-bottom: 10px; border-bottom: 2px solid #e9ecef; padding-bottom: 5px; }
+        .result-box { background-color: #fff; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; }
+        .result-row { display: flex; justify-content: space-between; padding: 8px 15px; border-bottom: 1px solid #f1f3f5; font-size: 0.95rem; }
+        .result-row:last-child { border-bottom: none; }
+        .result-row.highlight { background-color: #e8f5e9; font-weight: bold; color: #198754; font-size: 1.1rem; }
+        .result-row.deduction { color: #dc3545; }
+        .result-row.subtotal { background-color: #f8f9fa; font-weight: 600; }
+        .fiscal-details { font-size: 0.8rem; background-color: #f8f9fa; padding: 10px; border-radius: 6px; margin-top: 10px; color: #555; }
+        .math-variable { font-family: 'Courier New', monospace; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card main-card">
+                <div class="header-bar text-center">
+                    <h3 class="mb-1">Retenciones Rentas del Trabajo (Nicaragua)</h3>
+                    <small>Metodología Art. 19 Reglamento LCT: expectativa anual → IR anual → retención por período</small>
+                </div>
+                <div class="card-body p-4">
+                    <form id="payrollForm">
+                        
+                        <div class="section-label text-primary">1. Datos Contractuales</div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Salario Mensual Bruto</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">C$</span>
+                                    <input type="number" class="form-control" id="monthlySalary" placeholder="Ej: 30000" oninput="calculate()">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Período de pago</label>
+                                <select class="form-select" id="payPeriod" onchange="calculate()">
+                                    <option value="quincenal" selected>Quincenal (24 pagos/año)</option>
+                                    <option value="mensual">Mensual (12 pagos/año)</option>
+                                </select>
+                                <div class="form-text text-muted" id="basePeriodoHelp">Base del período (automático): C$ 0.00</div>
+                            </div>
+                        </div>
+
+                        <div class="section-label text-primary">2. Variables del Período</div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label small">Horas Extras</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" class="form-control" id="hoursQty" placeholder="Cant." oninput="calculate()">
+                                    <span class="input-group-text">Hrs</span>
+                                </div>
+                                <div class="form-text text-end" id="hoursPay">C$ 0.00</div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label class="form-label small">Domingos/Feriados</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" class="form-control" id="holidayQty" placeholder="Cant." oninput="calculate()">
+                                    <span class="input-group-text">Días</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mt-1">
+                                    <div class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input" type="checkbox" id="df_inss" checked onchange="calculate()">
+                                        <label class="form-check-label small" for="df_inss">Sujeto a INSS</label>
+                                    </div>
+                                    <div class="form-check form-check-inline mb-0">
+                                        <input class="form-check-input" type="checkbox" id="df_ir" checked onchange="calculate()">
+                                        <label class="form-check-label small" for="df_ir">Sujeto a IR</label>
+                                    </div>
+                                </div>
+                                <div class="form-text text-end" id="holidayPay">C$ 0.00</div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label small">Otras Comisiones</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text">C$</span>
+                                    <input type="number" class="form-control" id="others" placeholder="0.00" oninput="calculate()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section-label text-success">3. Ingresos No Gravables (Sin Deducción)</div>
+                        <div class="row g-2 mb-4">
+                            <div class="col-4">
+                                <input type="number" class="form-control form-control-sm" id="bonus" placeholder="Bonos" oninput="calculate()">
+                            </div>
+                            <div class="col-4">
+                                <input type="number" class="form-control form-control-sm" id="viaticos" placeholder="Viáticos" oninput="calculate()">
+                            </div>
+                            <div class="col-4">
+                                <input type="number" class="form-control form-control-sm" id="incentives" placeholder="Otros" oninput="calculate()">
+                            </div>
+                        </div>
+
+                        <div class="section-label text-dark">4. Colilla de Pago Detallada</div>
+                        
+                        <div class="result-box shadow-sm">
+                            <div class="result-row">
+                                <span>(+) Salario Base del Período</span>
+                                <span class="fw-bold" id="r_base">C$ 0.00</span>
+                            </div>
+                            <div class="result-row">
+                                <span>(+) Variables (Extras + Domingos/Feriados + Otros)</span>
+                                <span id="r_variables">C$ 0.00</span>
+                            </div>
+                            <div class="result-row subtotal" style="background-color: #e3f2fd;">
+                                <span>(=) TOTAL DEVENGADO</span>
+                                <span id="r_devengadoTotal">C$ 0.00</span>
+                            </div>
+                            <div class="result-row subtotal" style="background-color: #eef6ff;">
+                                <span>(=) BASE INSS</span>
+                                <span id="r_baseInss">C$ 0.00</span>
+                            </div>
+                            <div class="result-row subtotal" style="background-color: #eef6ff;">
+                                <span>(=) BASE IR</span>
+                                <span id="r_baseIr">C$ 0.00</span>
+                            </div>
+                            
+                            <div class="result-row deduction mt-2">
+                                <span>(-) INSS Laboral (7.00%)</span>
+                                <span id="r_inss">C$ 0.00</span>
+                            </div>
+                            <div class="result-row deduction">
+                                <span>(-) IR (Retención por período)</span>
+                                <span id="r_ir">C$ 0.00</span>
+                            </div>
+                            
+                            <div class="result-row subtotal">
+                                <span>(=) Subtotal Neto</span>
+                                <span id="r_subtotal">C$ 0.00</span>
+                            </div>
+                            
+                            <div class="result-row text-success">
+                                <span>(+) Total No Gravables</span>
+                                <span id="r_nogravable">C$ 0.00</span>
+                            </div>
+                            
+                            <div class="result-row highlight">
+                                <span>NETO A RECIBIR</span>
+                                <span id="r_total">C$ 0.00</span>
+                            </div>
+                        </div>
+
+                        <div class="accordion mt-3" id="accordionFiscal">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#fiscalCollapse">
+                                        <small>📚 Ver Auditoría del Cálculo de IR</small>
+                                    </button>
+                                </h2>
+                                <div id="fiscalCollapse" class="accordion-collapse collapse">
+                                    <div class="accordion-body bg-light">
+                                        <ul class="list-unstyled mb-0 small">
+                                            <li class="d-flex justify-content-between">
+                                                <span>1. Expectativa anual = (Base IR - INSS) × pagos/año:</span>
+                                                <span class="math-variable" id="d_baseAnual">0.00</span>
+                                            </li>
+                                            <li class="d-flex justify-content-between">
+                                                <span>2. Rango en Tabla Progresiva:</span>
+                                                <span class="math-variable" id="d_rango">Exento</span>
+                                            </li>
+                                            <li class="d-flex justify-content-between">
+                                                <span>3. Impuesto Base Anual:</span>
+                                                <span class="math-variable" id="d_impuestoBase">0.00</span>
+                                            </li>
+                                            <li class="d-flex justify-content-between">
+                                                <span>4. Porcentaje sobre exceso:</span>
+                                                <span class="math-variable" id="d_porcentaje">0%</span>
+                                            </li>
+                                            <li class="d-flex justify-content-between border-top pt-1 mt-1">
+                                                <span>5. IR Anual Calculado:</span>
+                                                <span class="math-variable" id="d_irAnual">0.00</span>
+                                            </li>
+                                            <li class="d-flex justify-content-between fw-bold">
+                                                <span>6. IR por período = IR anual ÷ pagos/año:</span>
+                                                <span class="math-variable" id="d_irFinal">0.00</span>
+                                            </li>
+                                            <li class="d-flex justify-content-between border-top pt-1 mt-1 text-muted">
+                                                <span>Nota:</span>
+                                                <span>Domingos/Feriados puede excluirse de INSS y/o IR</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const fmt = new Intl.NumberFormat('es-NI', { style: 'currency', currency: 'NIO', minimumFractionDigits: 2 });
+
+    function calculate() {
+        // --- 1. ENTRADAS ---
+        const mensual = parseFloat(document.getElementById('monthlySalary').value) || 0;
+        const payPeriod = document.getElementById('payPeriod')?.value || 'quincenal';
+        const pagosAnio = payPeriod === 'mensual' ? 12 : 24;
+        const dfSujetoInss = document.getElementById('df_inss')?.checked ?? true;
+        const dfSujetoIr = document.getElementById('df_ir')?.checked ?? true;
+        
+        // Base del período
+        const basePeriodo = payPeriod === 'mensual' ? mensual : (mensual / 2);
+        
+        // Tarifas
+        const diario = mensual / 30; // Ley laboral NI: mes comercial de 30 días
+        const hora = diario / 8;
+
+        // Entradas Variables
+        const horasQty = parseFloat(document.getElementById('hoursQty').value) || 0;
+        const diasQty = parseFloat(document.getElementById('holidayQty').value) || 0;
+        const otros = parseFloat(document.getElementById('others').value) || 0;
+        
+        // Entradas No Gravables
+        const bonos = parseFloat(document.getElementById('bonus').value) || 0;
+        const viaticos = parseFloat(document.getElementById('viaticos').value) || 0;
+        const incentivos = parseFloat(document.getElementById('incentives').value) || 0;
+
+        // --- 2. CÁLCULOS VARIABLES ---
+        // Extras: Se pagan doble (100% recargo). Formula: (ValorHora * 2) * Cantidad
+        const pagoExtras = (hora * 2) * horasQty;
+        
+        // Feriados/Descanso: Se paga el día adicional. Formula: ValorDia * Cantidad
+        const pagoFeriados = diario * diasQty;
+
+        // Actualizar UI de variables
+        document.getElementById('hoursPay').textContent = fmt.format(pagoExtras);
+        document.getElementById('holidayPay').textContent = fmt.format(pagoFeriados);
+        const basePeriodoHelp = document.getElementById('basePeriodoHelp');
+        if (basePeriodoHelp) basePeriodoHelp.textContent = `Base del período (automático): ${fmt.format(basePeriodo)}`;
+
+        // --- 3. TOTAL DEVENGADO (BASE IMPONIBLE) ---
+        const totalDevengado = basePeriodo + pagoExtras + pagoFeriados + otros;
+        const baseInss = basePeriodo + pagoExtras + (dfSujetoInss ? pagoFeriados : 0) + otros;
+        const baseIr = basePeriodo + pagoExtras + (dfSujetoIr ? pagoFeriados : 0) + otros;
+
+        // --- 4. INSS LABORAL (7%) ---
+        // Nota: Sin techo salarial segun reforma 2019
+        const inss = baseInss * 0.07;
+
+        // --- 5. CÁLCULO DE IR (RENTA DEL TRABAJO) ---
+        // Base para IR = Base IR - INSS
+        const netoParaIR = baseIr - inss;
+        
+        // Expectativa anual (Art. 19 Reglamento LCT): neto del período × pagos/año
+        const rentaNetaAnual = netoParaIR * pagosAnio;
+        
+        let irAnual = 0;
+        let rangoInfo = "Exento (0 - 100k)";
+        let impuestoBase = 0;
+        let porcentaje = 0;
+
+        // TABLA PROGRESIVA ANUAL (DGI NICARAGUA)
+        if (rentaNetaAnual > 500000) {
+            // Estrato V: 500,001 en adelante
+            impuestoBase = 82500;
+            porcentaje = 0.30;
+            const exceso = rentaNetaAnual - 500000;
+            irAnual = (exceso * porcentaje) + impuestoBase;
+            rangoInfo = "> 500,000 (30%)";
+        } else if (rentaNetaAnual > 350000) {
+            // Estrato IV: 350,001 - 500,000
+            impuestoBase = 45000;
+            porcentaje = 0.25;
+            const exceso = rentaNetaAnual - 350000;
+            irAnual = (exceso * porcentaje) + impuestoBase;
+            rangoInfo = "350k - 500k (25%)";
+        } else if (rentaNetaAnual > 200000) {
+            // Estrato III: 200,001 - 350,000
+            impuestoBase = 15000;
+            porcentaje = 0.20;
+            const exceso = rentaNetaAnual - 200000;
+            irAnual = (exceso * porcentaje) + impuestoBase;
+            rangoInfo = "200k - 350k (20%)";
+        } else if (rentaNetaAnual > 100000) {
+            // Estrato II: 100,001 - 200,000
+            impuestoBase = 0;
+            porcentaje = 0.15;
+            const exceso = rentaNetaAnual - 100000;
+            irAnual = (exceso * porcentaje) + impuestoBase;
+            rangoInfo = "100k - 200k (15%)";
+        } else {
+            // Estrato I: 0 - 100,000
+            irAnual = 0;
+        }
+
+        const irPeriodo = irAnual / pagosAnio;
+
+        // --- 6. TOTALES FINALES ---
+        const subtotalNeto = totalDevengado - inss - irPeriodo;
+        const totalNoGravable = bonos + viaticos + incentivos;
+        const totalFinal = subtotalNeto + totalNoGravable;
+
+        // --- 7. RENDERIZADO EN PANTALLA ---
+        // Colilla
+        document.getElementById('r_base').textContent = fmt.format(basePeriodo);
+        document.getElementById('r_variables').textContent = fmt.format(pagoExtras + pagoFeriados + otros);
+        document.getElementById('r_devengadoTotal').textContent = fmt.format(totalDevengado);
+        document.getElementById('r_baseInss').textContent = fmt.format(baseInss);
+        document.getElementById('r_baseIr').textContent = fmt.format(baseIr);
+        document.getElementById('r_inss').textContent = fmt.format(inss);
+        document.getElementById('r_ir').textContent = fmt.format(irPeriodo);
+        document.getElementById('r_subtotal').textContent = fmt.format(subtotalNeto);
+        document.getElementById('r_nogravable').textContent = fmt.format(totalNoGravable);
+        document.getElementById('r_total').textContent = fmt.format(totalFinal);
+
+        // Auditoría Fiscal (Desglose)
+        document.getElementById('d_baseAnual').textContent = fmt.format(rentaNetaAnual);
+        document.getElementById('d_rango').textContent = rangoInfo;
+        document.getElementById('d_impuestoBase').textContent = fmt.format(impuestoBase);
+        document.getElementById('d_porcentaje').textContent = (porcentaje * 100) + "%";
+        document.getElementById('d_irAnual').textContent = fmt.format(irAnual);
+        document.getElementById('d_irFinal').textContent = fmt.format(irPeriodo);
+    }
+</script>
+
+</body>
+</html>
